@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+
+{% block title %}Chat with MediMind AI{% endblock %}
+
+{% block content %}
+<div class="chat-container">
+    <div class="chat-header">
+        <h2>How are you feeling today?</h2>
+        <p>Describe your symptoms naturally, and I'll help you prepare for your doctor visit.</p>
+    </div>
+    
+    <div class="chat-messages" id="chatMessages">
+        <div class="message ai-message">
+            <div class="message-avatar">🧠</div>
+            <div class="message-content">
+                Hi, I'm MediMind. I'm here to help you prepare for your doctor's visit.<br><br>
+                Let's start — what's been bothering you? Please describe how you're feeling.
+            </div>
+        </div>
+    </div>
+    
+    <div class="chat-input-area">
+        <textarea id="messageInput" placeholder="Type your message here..." rows="3"></textarea>
+        <button id="sendButton" class="send-button">Send</button>
+    </div>
+    
+    <div id="summaryButtonContainer" style="display: none;">
+        <button id="generateSummaryBtn" class="generate-summary-btn">Generate My Summary →</button>
+    </div>
+</div>
+
+<script>
+let currentSessionId = null;
+let conversationHistory = [];
+let isWaitingForResponse = false;
+let readyForSummary = false;
+
+const chatMessages = document.getElementById('chatMessages');
+const messageInput = document.getElementById('messageInput');
+const sendButton = document.getElementById('sendButton');
+
+function addMessage(role, content) {
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `message ${role === 'user' ? 'user-message' : 'ai-message'}`;
+    
+    if (role === 'assistant') {
+        const avatar = document.createElement('div');
+        avatar.className = 'message-avatar';
+        avatar.textContent = '🧠';
+        messageDiv.appendChild(avatar);
+    }
+    
+    const contentDiv = document.createElement('div');
+    contentDiv.className = 'message-content';
+    contentDiv.innerHTML = content.replace(/\n/g, '<br>');
+    messageDiv.appendChild(contentDiv);
+    
+    chatMessages.appendChild(messageDiv);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+function showLoading() {
+    const loadingDiv = document.createElement('div');
+    loadingDiv.className = 'message ai-message loading';
+    loadingDiv.id = 'loadingMessage';
+    loadingDiv.innerHTML = '<div class="message-avatar">🧠</div><div class="message-content"><div class="loading-spinner"></div> Thinking...</div>';
+    chatMessages.appendChild(loadingDiv);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+function hideLoading() {
+    const loadingMsg = document.getElementById('loadingMessage');
+    if (loadingMsg) loadingMsg.remove();
+}
+
+async function sendMessage() {
+    const message = messageInput.value.trim();
+    if (!message || isWaitingForResponse) return;
+    
+    // Add user message to UI
+    addMessage('user', message);
+    conversationHistory.push({role: 'user', content: message});
+    messageInput.value = '';
+    
+    isWaitingForResponse = true;
+    sendButton.disabled = true;
+    showLoading();
+    
+    try {
+        const response = await fetch('/api/chat/message', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                message: message,
+                history: conversationHistory,
+                session_id: currentSessionId
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            hideLoading();
+            addMessage('assistant', data.message);
+            conversationHistory.push({role: 'assistant', content: data.message});
+            currentSessionId = data.session_id;
+            readyForSummary = data.ready_for_summary;
+            
+            if (readyForSummary) {
+                document.getElementById('summaryButtonContainer').style.display = 'flex';
+            }
+        } else {
+            hideLoading();
+            addMessage('assistant', 'Sorry, something went wrong. Please try again.');
+        }
+    } catch (error) {
+        hideLoading();
+        addMessage('assistant', 'Network error. Please check your connection and try again.');
+    } finally {
+        isWaitingForResponse = false;
+        sendButton.disabled = false;
+        messageInput.focus();
+    }
+}
+
+sendButton.addEventListener('click', sendMessage);
+messageInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+    }
+});
+
+document.getElementById('generateSummaryBtn').addEventListener('click', async () => {
+    if (!readyForSummary) {
+        alert('Please chat with MediMind a little more before generating your summary.');
+        return;
+    }
+    
+    const btn = document.getElementById('generateSummaryBtn');
+    btn.disabled = true;
+    btn.textContent = 'Generating...';
+    
+    try {
+        const response = await fetch('/api/generate-summary', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({session_id: currentSessionId})
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            // Store summary in sessionStorage
+            sessionStorage.setItem('medimind_summary', JSON.stringify(data.summary));
+            window.location.href = '/summary';
+        } else {
+            alert(data.error || 'Failed to generate summary. Please try again.');
+        }
+    } catch (error) {
+        alert('Network error. Please try again.');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Generate My Summary →';
+    }
+});
+</script>
+{% endblock %}

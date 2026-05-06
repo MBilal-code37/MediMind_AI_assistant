@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block title %}MediMind AI - Prepare for Your Doctor Visit{% endblock %}
+
+{% block content %}
+<div class="landing-page">
+    <div class="hero-section">
+        <h1 class="hero-title">MediMind AI</h1>
+        <p class="hero-tagline">Walk into every appointment prepared.</p>
+        <p class="hero-subtext">Describe your symptoms. We'll help you understand them — and make the most of your time with the doctor.</p>
+        
+        {% if session.user_id %}
+            <a href="/chat" class="cta-button">Start Symptom Check →</a>
+        {% else %}
+            <a href="/login" class="cta-button">Start Symptom Check →</a>
+        {% endif %}
+    </div>
+    
+    <div class="features-section">
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon">💬</div>
+                <h3>Conversational symptom intake</h3>
+                <p>Chat naturally about your symptoms, just like talking to a nurse.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">📋</div>
+                <h3>Possible conditions in plain language</h3>
+                <p>Understand potential causes without medical jargon.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">❓</div>
+                <h3>Smart questions for your doctor</h3>
+                <p>Get personalized questions to ask during your appointment.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">📄</div>
+                <h3>Downloadable visit-prep PDF</h3>
+                <p>Take your prepared summary to show your doctor.</p>
+            </div>
+        </div>
+    </div>
+    
+    <footer class="disclaimer-footer">
+        <p>MediMind AI is not a substitute for professional medical advice, diagnosis, or treatment. Always consult a qualified doctor.</p>
+    </footer>
+</div>
+{% endblock %}
